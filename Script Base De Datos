@@ -1,0 +1,173 @@
+-- =============================================
+-- BASE DE DATOS PARA UN SISTEMA DE FORMULARIOS DINÁMICOS MULTIEMPRESA BASADO EN PROCESOS (SQL Server 2019)
+-- =============================================
+
+-- Crear la base de datos
+CREATE DATABASE DynamicFormsMetamodel;
+GO
+
+USE DynamicFormsMetamodel;
+GO
+
+-- =============================================
+-- Tabla: Organizations
+-- Agrupa usuarios y formularios por empresa o consorcio
+-- =============================================
+CREATE TABLE Organizations (
+    OrganizationID INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =============================================
+-- Tabla: Areas
+-- Define las secciones o áreas internas de una organización
+-- =============================================
+CREATE TABLE Areas (
+    AreaID INT IDENTITY(1,1) PRIMARY KEY,
+    OrganizationID INT NOT NULL,
+    Name NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Areas_Organizations FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID)
+);
+
+-- =============================================
+-- Tabla: Users
+-- Información de usuarios, incluyendo roles y área
+-- =============================================
+CREATE TABLE Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(100) NOT NULL,
+    Email NVARCHAR(150),
+    FullName NVARCHAR(200),
+    Role NVARCHAR(50), -- SuperAdmin, Admin, User
+    AreaID INT,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Users_Areas FOREIGN KEY (AreaID) REFERENCES Areas(AreaID)
+);
+
+-- =============================================
+-- Tabla: Processes
+-- Procesos generales de negocio, compuestos por pasos
+-- =============================================
+CREATE TABLE Processes (
+    ProcessID INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX),
+    OrganizationID INT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Processes_Organization FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID)
+);
+
+-- =============================================
+-- Tabla: ProcessSteps
+-- Pasos de un proceso, donde se ligan formularios
+-- =============================================
+CREATE TABLE ProcessSteps (
+    StepID INT IDENTITY(1,1) PRIMARY KEY,
+    ProcessID INT NOT NULL,
+    StepName NVARCHAR(200),
+    StepOrder INT,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Steps_Process FOREIGN KEY (ProcessID) REFERENCES Processes(ProcessID)
+);
+
+-- =============================================
+-- Tabla: Forms
+-- Formularios asignados a pasos de procesos y a áreas
+-- =============================================
+CREATE TABLE Forms (
+    FormID INT IDENTITY(1,1) PRIMARY KEY,
+    StepID INT NOT NULL,
+    AreaID INT NOT NULL,
+    Name NVARCHAR(200),
+    Description NVARCHAR(MAX),
+    JsonDefinition NVARCHAR(MAX), -- Definición completa del metamodelo como JSON
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    IsPublished BIT DEFAULT 0,
+    CONSTRAINT FK_Forms_Step FOREIGN KEY (StepID) REFERENCES ProcessSteps(StepID),
+    CONSTRAINT FK_Forms_Area FOREIGN KEY (AreaID) REFERENCES Areas(AreaID)
+);
+
+-- =============================================
+-- Tabla: FormSections
+-- Secciones de los formularios (Wizard / Cabecera / Detalle / Pie)
+-- =============================================
+CREATE TABLE FormSections (
+    SectionID INT IDENTITY(1,1) PRIMARY KEY,
+    FormID INT NOT NULL,
+    SectionName NVARCHAR(200),
+    SectionType NVARCHAR(50), -- Header, Body, Footer, WizardStep
+    SectionOrder INT,
+    JsonDefinition NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Section_Form FOREIGN KEY (FormID) REFERENCES Forms(FormID)
+);
+
+-- =============================================
+-- Tabla: FormFields
+-- Campos de cada sección del formulario
+-- =============================================
+CREATE TABLE FormFields (
+    FieldID INT IDENTITY(1,1) PRIMARY KEY,
+    SectionID INT NOT NULL,
+    Label NVARCHAR(200),
+    DataKey NVARCHAR(100),
+    FieldType NVARCHAR(50), -- text, number, date, select, etc.
+    IsRequired BIT DEFAULT 0,
+    IsVisible BIT DEFAULT 1,
+    IsEditable BIT DEFAULT 1,
+    DefaultValue NVARCHAR(MAX),
+    FieldOrder INT,
+    JsonDefinition NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Field_Section FOREIGN KEY (SectionID) REFERENCES FormSections(SectionID)
+);
+
+-- =============================================
+-- Tabla: FormRelations
+-- Relaciones entre formularios en base a acciones o respuestas
+-- =============================================
+CREATE TABLE FormRelations (
+    RelationID INT IDENTITY(1,1) PRIMARY KEY,
+    SourceFormID INT NOT NULL,
+    TargetFormID INT NOT NULL,
+    TriggerField NVARCHAR(100),
+    TriggerCondition NVARCHAR(MAX),
+    ActionType NVARCHAR(100), -- show, preload, open, link etc.
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Relation_Source FOREIGN KEY (SourceFormID) REFERENCES Forms(FormID),
+    CONSTRAINT FK_Relation_Target FOREIGN KEY (TargetFormID) REFERENCES Forms(FormID)
+);
+
+-- =============================================
+-- Tabla: FormActions
+-- Acciones específicas en formulario/sección/campo
+-- =============================================
+CREATE TABLE FormActions (
+    ActionID INT IDENTITY(1,1) PRIMARY KEY,
+    Scope NVARCHAR(50), -- Form, Section, Field
+    ScopeID INT NOT NULL,
+    TriggerEvent NVARCHAR(100), -- onLoad, onChange, onSubmit
+    ActionType NVARCHAR(100), -- validate, setValue, showMessage
+    Script NVARCHAR(MAX), -- JavaScript o JSON con lógica
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =============================================
+-- Tabla: UserPrivileges
+-- Permisos detallados por usuario para formularios/secciones/campos
+-- =============================================
+CREATE TABLE UserPrivileges (
+    PrivilegeID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL,
+    Scope NVARCHAR(50), -- Form, Section, Field
+    ScopeID INT NOT NULL,
+    CanView BIT DEFAULT 0,
+    CanEdit BIT DEFAULT 0,
+    CanSubmit BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Priv_User FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
