@@ -1,0 +1,96 @@
+ENTITY: Organizations
+- OrganizationID (PK)
+- Name
+- Description
+- CreatedAt
+
+ENTITY: Areas
+- AreaID (PK)
+- OrganizationID (FK) -> Organizations.OrganizationID
+- Name
+- Description
+- CreatedAt
+
+ENTITY: Users
+- UserID (PK)
+- Username
+- Email
+- FullName
+- Role
+- AreaID (FK) -> Areas.AreaID
+- CreatedAt
+
+ENTITY: Processes
+- ProcessID (PK)
+- Name
+- Description
+- OrganizationID (FK) -> Organizations.OrganizationID
+- CreatedAt
+
+ENTITY: ProcessSteps
+- StepID (PK)
+- ProcessID (FK) -> Processes.ProcessID
+- StepName
+- StepOrder
+- CreatedAt
+
+ENTITY: Forms
+- FormID (PK)
+- StepID (FK) -> ProcessSteps.StepID
+- AreaID (FK) -> Areas.AreaID
+- Name
+- Description
+- JsonDefinition
+- IsPublished
+- CreatedAt
+
+ENTITY: FormSections
+- SectionID (PK)
+- FormID (FK) -> Forms.FormID
+- SectionName
+- SectionType
+- SectionOrder
+- JsonDefinition
+- CreatedAt
+
+ENTITY: FormFields
+- FieldID (PK)
+- SectionID (FK) -> FormSections.SectionID
+- Label
+- DataKey
+- FieldType
+- IsRequired
+- IsVisible
+- IsEditable
+- DefaultValue
+- FieldOrder
+- JsonDefinition
+- CreatedAt
+
+ENTITY: FormRelations
+- RelationID (PK)
+- SourceFormID (FK) -> Forms.FormID
+- TargetFormID (FK) -> Forms.FormID
+- TriggerField
+- TriggerCondition
+- ActionType
+- CreatedAt
+
+ENTITY: FormActions
+- ActionID (PK)
+- Scope
+- ScopeID
+- TriggerEvent
+- ActionType
+- Script
+- CreatedAt
+
+ENTITY: UserPrivileges
+- PrivilegeID (PK)
+- UserID (FK) -> Users.UserID
+- Scope
+- ScopeID
+- CanView
+- CanEdit
+- CanSubmit
+- CreatedAt
